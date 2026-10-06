@@ -25,7 +25,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 ## Install lark-mcp globally (will install keytar as dependency)
-RUN npm install -g @larksuiteoapi/lark-mcp@latest \
+RUN npm install -g @larksuiteoapi/lark-mcp@0.5.1 \
   && npm cache clean --force
 
 ## Prepare XDG and user-writable dirs before dropping privileges
@@ -111,13 +111,17 @@ SCRIPT
 chmod +x /usr/local/bin/docker-entrypoint.sh
 EOF
 
+COPY railway-auth/package.json railway-auth/package-lock.json /opt/lark-mcp-auth/
+RUN npm ci --prefix /opt/lark-mcp-auth --omit=dev --ignore-scripts && npm cache clean --force
+COPY railway-auth/gateway.mjs railway-auth/start.mjs /opt/lark-mcp-auth/
+
 USER node
 
 EXPOSE 3000
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh", "lark-mcp"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
-# Show help by default; override CMD to pass CLI arguments
-CMD ["--help"]
+# Start the protected gateway; the Lark backend only listens on loopback
+CMD ["node", "/opt/lark-mcp-auth/start.mjs"]
 
 
